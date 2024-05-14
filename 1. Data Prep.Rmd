@@ -1,0 +1,520 @@
+The purpose of this script is clean up and organize the Kananskis Country camera data. 
+
+
+Main outputs we want
+1. List of raw detections
+2. List of independent detections to 30 minutes threshold
+3. Camera deployment file
+4. Site covariate file
+
+Andrew Barnas 
+May 1st 2024
+andrew.f.barnas@gmail.com
+
+Load in packages we will need, setup working directories, and load in files. Now since this data has changed hands quite a bit I have gone ahead and done a bunch of work to sort out the specific files we need. Many of the old files did not match up. 
+```{r}
+#Clear everything out and start fresh
+rm(list=ls())
+
+library(tidyr)        # data tidying
+library(stringr)      # working with strings
+library(dplyr)        # data manipulation
+library(reproducible) # reproducible working directories
+library(ggplot2)      # plots
+library(ggpubr)       # combining plots
+library(lubridate)   # dates
+
+
+#Setup input and output paths
+input_directory <- checkPath(file.path(getwd(), "inputs"), 
+                            create = TRUE)
+
+output_directory <- checkPath(file.path(getwd(), "outputs"), 
+                             create = TRUE)
+
+#Read in the detection file. This should hold detections from winter 2011, 2012, and then summer 2013 and 2014. This file has been previously processed and organized to an extent, but I have no record of that.
+dets<-read.csv(file.path(input_directory, "KC_cameras_camera.data_2011.2014.csv" ), header = TRUE)
+
+#Read in the camera location file
+cams<-read.csv(file.path(input_directory, "KC_cameras_159_sites_locations.csv"), header = TRUE)
+
+#Read in site covariates, which have been extracted at different steps
+#Various landcover classes
+lc<-read.csv(file.path(input_directory, "EastSlopes_LandCover_All.csv" ))
+
+#Human features
+hf<-read.csv(file.path(input_directory, "EastSlopesHF_Sum.csv"))
+
+#NDVI from 2008
+ndvi_2008<-read.csv(file.path(input_directory, "EastSlopesNDVI2008.csv" ))
+
+#NDVI from 2012
+ndvi_2012<-read.csv(file.path(input_directory, "EastSlopesNDVI2012.csv" ))
+
+#Terrain ruggedness index
+tri<-read.csv(file.path(input_directory, "EastSlopesTRIMergedTable.csv"))
+
+```
+
+
+
+
+
+The purpose of this chunk is to first prove to ourselves that we have all the right data we want/need. We should have 159 sites total.
+```{r}
+
+#First, camera deployment, this shows we have 159 sites with deployment data
+colnames(cams)
+n_distinct(cams$Site)
+unique(cams$Site)
+
+#Now detections, here there are 159 sites, which matches the deployment data
+colnames(dets)
+n_distinct(dets$Site)
+
+#But most importantly, all of these sites in the detection file match the deployment file!
+unique(dets$Site) %in% unique(cams$Site)
+#Anybody not in the deployment file? Nope!
+dets%>%
+  filter(!Site %in% unique(cams$Site))
+
+#Now what about the covariate files? These lines of code show that all of the sites occurr within the deployment file as well!
+#But note some of them are named differently, so will require slight reworking downstream
+lc<-read.csv(file.path(input_directory, "EastSlopes_LandCover_All.csv" ))
+unique(dets$Site) %in% unique(lc$Camera_Sit)
+
+hf<-read.csv(file.path(input_directory, "EastSlopesHF_Sum.csv"))
+unique(dets$Site) %in% unique(hf$Camera_Sit)
+
+ndvi_2008<-read.csv(file.path(input_directory, "EastSlopesNDVI2008.csv" ))
+unique(dets$Site) %in% unique(ndvi_2008$CAMERA) #Note the different name
+
+ndvi_2012<-read.csv(file.path(input_directory, "EastSlopesNDVI2012.csv" ))
+unique(dets$Site) %in% unique(ndvi_2012$CAMERA) #Note the different name
+
+tri<-read.csv(file.path(input_directory, "EastSlopesTRIMergedTable.csv"))
+unique(dets$Site) %in% unique(tri$CAMERA) #Note the different name
+
+#Happy! Now we can move on to actually processing these data!
+
+```
+
+The detection file is large and untamed, there are like four columns for site names. I am going to clean this up so its a bit easier to work with
+```{r}
+#colnames(dets)
+#Just keeping Site, Date, Time, and Species
+#dets<-dets%>%
+ # dplyr::select(c(Site, Date, Time, Species))
+
+```
+
+
+
+First product, we are going to create a camera operability matrix for the array
+```{r}
+#Ok lets create the camera operability matrix. To do this we need to first know the first and last dates of operation for each camera. In the Kananaskis data we do not have a timelapse function, so this depends on knowing when the first and last detection (trigger) was.
+
+A<-dets%>%
+  mutate(datetime = paste(Date, Time, sep = " "),
+         datetime2 = dmy_hms(datetime))
+
+
+#Ok so here is the problem. It appears that the 2013 and 2014 data's "Date" column is completely messed up. Inexplicably so. I might be able to save it, but I think I can match these two years of data to other files, and merge them into the main detection file. Lets see...
+
+ESPP<-read.csv(file.path(input_directory, "archived/ESPP13_14_master.csv"))
+
+#First lets isolate the data that did not read in
+no_date<-A%>%
+  filter(is.na(datetime2))%>%
+  #removing one weird row that had zero data
+  filter(!is.na(Date))
+
+#Ok so its comforting that these two dataframes have the same number of observations
+nrow(no_date)
+nrow(ESPP)
+
+#Do the site names match? Well there are 201..
+n_distinct(ESPP$Location)
+unique(ESPP$Location) %in% unique(no_date$Site)
+
+#How many in ESPP match? Uggggh only 136.... This might be because some sites don't have detections though??
+ESPP%>%
+  filter(Location %in% unique(no_date$Site))%>%
+  summarise(n_sites = n_distinct(Location))
+
+#TRUE! Ok they do match! 
+n_distinct(no_date$Site)
+
+#Ok so what I think I can do is just filter out the sites that match, and swap them into the main dataframe??
+
+#First remove the NAs from the main dataframe
+dets2<-A%>%
+  filter(!is.na(datetime2))%>%
+  #Also get rid of that one weird row
+    filter(!is.na(Date))%>%
+  #Just keep columns we want
+  dplyr::select(Site, Date, Time, Species, DateStart)
+
+#Next, just keep the sites from ESPP we want!
+ESPP<-ESPP%>%
+  filter(Location %in% unique(no_date$Site))%>%
+  #keep and rename the columns we want
+  dplyr::select(Site = Location, 
+                Date = DateImage,
+                Time = TimeImage,
+                Species = Species,
+                DateStart)
+
+
+#Now we should be able to bind these into a new file that has everyone
+dets<-rbind(dets2, ESPP)
+
+#And some checks to see what we have
+n_distinct(dets$Site)
+
+#I have lost some observations here, and I am not totally sure where they have gone. But there are 159 sites and I think this is the best I can do
+
+unique(dets$Site) %in% unique(cams$Site)
+
+```
+
+Lets try this again, attempting to make a camera operability matrix
+```{r}
+#Identify the first and last date for each site
+dets<-dets%>%
+  mutate(datetime = paste(Date, Time, sep = " "),
+         datetime = parse_date_time(datetime, orders = c("dmy_HMS", "ymd_HM")))
+
+#Lets check out the operability for these cameras 
+#Doing this we can see some obvious errors.
+dets%>%
+  group_by(Site)%>%
+  mutate(start_date = min(datetime),
+         end_date = max(datetime))%>%
+  slice(1)%>%
+  ggplot(aes(y = Site))+
+  geom_segment(aes(x = start_date, xend = end_date, y = Site, yend = Site))
+
+#You can see some of these are straight up errors, this project started in winter 2011. 
+#Lets remove them from the frame
+dets%>%
+  filter(year(datetime) < 2010)
+
+dets<-dets%>%
+  filter(year(datetime) > 2010)
+
+#So here is the problem. The project started winter 2011/2012, but then at a certain point carried on as summer only data for 2013/2014. And I think sites were named the same thing between placements, but the camera operability makes it look like its extended from 2011 to 2014 (we know cameras were not operational that long)
+dets%>%
+  group_by(Site)%>%
+  mutate(start_date = min(datetime),
+         end_date = max(datetime))%>%
+  slice(1)%>%
+  ggplot(aes(y = Site))+
+  geom_segment(aes(x = start_date, xend = end_date, y = Site, yend = Site))
+
+
+
+
+#So here is the fix I think. There is a column in the data for "datestart" and I am thinking these must be camera checks right? So if I go through each camera, identify the start date as the camera check date, but then the end date as the last date before the next start date, that should give me a better operability matrix I think
+
+#Create a new dataframe to populate
+camop<-as.data.frame(matrix(ncol = 3, nrow = 0))
+colnames(camop) <-c("Site", "start_date", "end_date")
+
+
+#Create a growing index we will use to indicate row
+index<-1
+
+#Arrange the dataframe in order of site and date
+A<-dets%>%
+  mutate(Date = date(datetime))%>%
+  arrange(Site, Date)%>%
+  #create a new column that thats the value of the laging row
+  mutate(next_date = lead(DateStart))
+
+#And just manually fix the last row which will have an NA by default. 
+A<-A%>%
+  replace(is.na(.), "2012-05-03")
+
+for(i in 1:nrow(A)){
+  
+  #First we ask if the next row is within the same camera check
+  if(A[i,5] == A[i,7]){
+    print("same camera check")
+    
+  }else{
+    #But if those dates don't match, it means the next row
+    #Is from a different check period. So we have to set the end date
+    #For this current check to the date of the current detection
+    #And the start date is just the start date
+    
+    print("camera check!! change the dates")
+    
+    #Assign the site ID
+    site<-A[i, 1]
+    start_date<-A[i,5]
+    end_date<-as.character(A[i,2])
+    
+    #And here is where we populate the dataframe
+    camop[index, 1]<-site
+    camop[index, 2]<-start_date
+    camop[index, 3]<-end_date
+    
+    #And increase index by 1
+    index<-index + 1
+    
+  }
+  
+}
+
+
+#Ok now theoretically if we read those dates in, we should come up with a better matrix, which I think it does
+A<-camop%>%
+  mutate(start2 = parse_date_time(start_date, orders = c("dmy", "ymd", "mdy")),
+         end2 = parse_date_time(end_date, orders = c("ymd")))
+
+  ggplot(A, aes(y = Site))+
+  geom_segment(aes(x = start2, xend = end2, y = Site, yend = Site))
+
+
+#Ok so now I just need to add the coordinates to this camop and export it!
+#Bit of a janky merge but here we go!
+camop<-merge(cams%>%
+  dplyr::select(Site, Easting, Northing),
+  A%>%
+    dplyr::select(Site, start_date, end_date),
+  by = "Site")
+
+write.csv(camop, file.path(output_directory, "kananaskis_camop.csv"), row.names = FALSE)
+
+
+```
+
+
+Preparing the independent detections
+```{r}
+#Clean up the deteciton file slightly
+dets<-dets%>%
+  dplyr::select(c(Site, datetime, Species))
+
+#At this point I NOT am going to output the raw detections here because I dont trust them
+#write.csv(dets, file.path(output_directory, "kananaskis_detections_raw.csv"), row.names = FALSE)
+
+#Ok what do we have in the file
+unique(dets$Species)
+
+#Looks like there is an NA? get rid of it
+#I am going to leave all other species (including unknown stuff), as it will be up to the individual user to figure out how they want to deal with specifics
+dets<-dets%>%
+  filter(!is.na(Species))
+
+#Ok now, arrange all the data by site, species, and time
+#And calculate a lag time for each subsequent species detection at each site
+#THIS WILL LOOK SLIGHTLY STRANGE - this kananaskis data is missing the "seconds" from its datetime data, which is slightly annoying
+#Should try to track down the original timelapse files
+
+
+dets<-dets%>%
+  arrange(Site, Species, datetime)%>%
+  group_by(Site, Species)%>%
+  mutate(timediff = as.numeric(difftime(datetime, lag(datetime),
+                                        units = "mins")))
+
+#This is our rolling window for "independence": we will count windows as independent if they are more than "mins" apart. Here we are using 30 minutes. 
+
+mins<-30
+
+#This loop assigns group ID based on independence. 
+ dets$Event.ID <- 9999
+ seq <- as.numeric(paste0(nrow(dets),0))
+ seq <- round(seq,-(nchar(seq)))
+ for (i in 2:nrow(dets)) {
+   dets$Event.ID[i-1]  <- paste0("E",format(seq, scientific = F))
+   if(is.na(dets$timediff[i]) | abs(dets$timediff[i]) > (mins)){
+     seq <- seq + 1
+   }
+ }
+ 
+ if(dets$timediff[nrow(dets)] < (mins)|
+    is.na(dets$timediff[nrow(dets)])){
+   dets$Event.ID[nrow(dets)] <- dets$Event.ID[nrow(dets)-1]
+ } else{dets$Event.ID[nrow(dets)] <- paste0("E",format(seq+1, scientific = F))
+ }
+ 
+   #And then take only the first row of data for each independent event
+dets_independent<-dets%>%
+   group_by(Event.ID)%>%
+   slice(1)%>%
+  arrange(Site, Species)
+
+#And write the independent detection file
+write.csv(dets_independent, file.path(output_directory, "kananaskis_30min_independent_detections.csv"),
+          row.names = FALSE)
+
+```
+
+##############################################################################################################################
+Preparing the covariate files
+
+```{r}
+#Ok lets remind ourselves of the data we are working with. Multiple files of covariates for the different sites, I am guessing ther will be some inconsistensies on site names and whatnot, so we need to do work to make sure we have covariates for all of the sites in the detection file.
+
+#Covariate files
+hf
+lc
+ndvi_2008
+ndvi_2012
+tri
+
+#Sites we need data for
+unique(dets$Site)
+
+#Probably best to deal with these one at a time. I am going to build a new dataframe and just add to it sequentially
+covs<-data.frame(site = unique(dets$Site))
+
+########################################################################################################
+#Human features variables
+#How many radius levels?
+unique(hf$Distance)
+
+#How many sites? 265, we only need the 159
+n_distinct(hf$Camera_Sit)
+
+#Lets filter for sites that we have data for
+hf<-hf%>%
+  filter(Camera_Sit %in% unique(dets$Site))%>%
+  dplyr::select(radius = Distance,
+                feature = PublicCode,
+                site = Camera_Sit,
+                percent_area = Percent_Area)
+
+#And keep only the columns we want, while spreading them out wide
+
+#Commented out, but you get an error
+#hf%>%
+ #pivot_wider(names_from = feature, values_from = percent_area)
+
+
+#Ok well inexplicably there are duplicates in the dataframe...remove them.
+#(I took a quick look and indeed they do look like true duplicates)
+hf<-hf%>%
+  group_by(radius, site, feature)%>%
+  slice(1)
+
+#Try again...getting an error and I imagine its in the column names
+#hf%>%
+# pivot_wider(names_from = feature, values_from = percent_area)
+unique(hf$feature)
+
+#Ok lets do some modifications
+hf<-hf%>%
+  mutate(feature = str_replace(feature, pattern = " \xd4\xc7\xf4 ", replacement = "_"),
+         feature = str_replace(feature, pattern = "/", replacement = "_"))
+
+#Try again...getting an error and I imagine its in the column names
+hf<-hf%>%
+ pivot_wider(names_from = feature, values_from = percent_area)%>%
+ #Replace NAs with 0, as this indicates none of the feature was present
+  replace(is.na(.), 0)
+
+#Merge that into the covariate file
+covs<-merge(covs, hf, by = "site")
+
+###################################################################################################
+#Landcover Classes
+
+#Clean it up slightly
+
+lc<-lc%>%
+  dplyr::select(radius = RADIUS,
+                site = Camera_Sit,
+                type = GRIDCODE,
+                percent_area = PERCENT.AREA)
+
+#Need to figure out what the gridcodes mean....
+#What are the codes? 
+unique(lc$type)
+
+#I found a reference in the supporting materials
+lc<-lc%>%
+  mutate(type = case_when(type == 1 ~ "dense_conifer",
+                              type == 2 ~ "moderate_conifer",
+                              type == 3 ~ "open_conifer",
+                              type == 4 ~ "mixed",
+                              type == 5 ~ "broadleaf",
+                              type == 6 ~ "treed_wetland",
+                              type == 7 ~ "open_wetland",
+                              type == 8 ~ "shrub",
+                              type == 9 ~ "herb",
+                              type == 10 ~ "agriculture",
+                              type == 11 ~ "barren",
+                              type == 12~ "water",
+                              type == 13 ~ "snow_or_ice",
+                              type == 14 ~ "cloud_or_no_data",
+                              type == 15 ~ "shadow_or_no_data",
+                              type == 16 ~ "unknown"))
+
+#Spread that wide and merge it
+lc<-lc%>%
+  pivot_wider(names_from = type, values_from = percent_area)%>%
+  replace(is.na(.), 0)
+
+covs<-merge(covs, lc, by = c("site", "radius"))
+n_distinct(covs$site)
+
+##############################################################################################3
+#NDVI 2008
+ndvi_2008
+
+ndvi_2008<-ndvi_2008%>%
+  dplyr::select(site = CAMERA,
+                radius = RADIUS,
+                mean_ndvi_2008 = MEAN)
+
+#Filter out the sites we want (dont have to do this but I am curious)
+ndvi_2008<-ndvi_2008%>%
+  filter(site %in% unique(dets$Site))
+
+#Why are there more observations here than in the covs file?
+#Maybe some extra radius?
+unique(ndvi_2008$radius) %in% unique(covs$radius) #yup
+
+covs<-merge(covs, ndvi_2008, by = c("site", "radius"))
+
+##############################################################################################3
+#NDVI 2012
+ndvi_2012
+
+ndvi_2012<-ndvi_2012%>%
+  dplyr::select(site = CAMERA,
+                radius = RADIUS,
+                mean_ndvi_2012 = MEAN)
+
+#Filter out the sites we want (dont have to do this but I am curious)
+ndvi_2012<-ndvi_2012%>%
+  filter(site %in% unique(dets$Site))
+
+#Why are there more observations here than in the covs file?
+#Maybe some extra radius?
+unique(ndvi_2012$radius) %in% unique(covs$radius) #yup
+
+covs<-merge(covs, ndvi_2012, by = c("site", "radius"))
+
+##################################################################################################3
+#TRI
+tri<-tri%>%
+  dplyr::select(site = CAMERA,
+                radius = RADIUS,
+                mean_tri = MEAN)
+
+covs<-merge(covs, tri, by = c("site", "radius"))
+
+
+#and finally, we can write the covariate file
+write.csv(covs, file.path(output_directory, "kananaskis_covariates.csv"),
+          row.names = FALSE)
+
+```
+
+
+Fin.
