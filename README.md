@@ -75,35 +75,25 @@ This folder contains information from the original data production necessary for
 <hr>
 
 ### **DETAILS ON OUTPUTS** 
-### Data specific information for : [outputs/willmore_camop.csv]  
+### Data specific information for : [outputs/kananaskis_camop.csv]  
 
 * **Number of variables/columns:** 5
-* **Number of observations/rows:** 115 (one per camera site) 
+* **Number of observations/rows:** 1123 (multiple rows per camera sites due to multiple checks) 
 
 **Variable List:**
-* **site** : camera site ID
+* **Site** : camera site ID
 * **Easting** : camera site Easting location
 * **Northing** : camera site Northing location
-* **start_date** : first day of camera operation as recorded by a camera trigger (no timelapse function used)
+* **start_date** : first day of camera operation as recorded by notes on camera start dates for that check
 * **end_date** : last day of camera operation as recorded by a camera trigger (no timelapse function used)
 
-### Data specific information for : [outputs/willmore_detections_raw.csv]  
-
-* **Number of variables/columns:** 3
-* **Number of observations/rows:** 151140
-
-**Variable List:**
-* **site** : camera site ID
-* **datetime** : the datetime (year-month-day hour:minute:second) of the first camera image of each independent detection. Multiple images may be taken during a detection event, and this data has been sliced to the first image for simplicity. Note there was an error in the raw data resulting in no "seconds" being recorded from the timelapse data, therefore all detections end at the top of the hour (e.g. 6:03:00 AM). This should be of little consequence, but is annoying. 
-* **species** : the species in the independent detection. Note this still contains "Unknowns" and some blanks, so this will need to be filtered/cleaned before any analysis.
-
-### Data specific information for : [outputs/willmore_30min_independent_detections.csv]  
+### Data specific information for : [outputs/kananaskis_30min_independent_detections.csv]  
 
 * **Number of variables/columns:** 5
-* **Number of observations/rows:** 19072 (one row for each independent detection of a species at each site) 
+* **Number of observations/rows:** 7989 (one row for each independent detection of a species at each site) 
 
 **Variable List:**
-* **site** : camera site ID
+* **Site** : camera site ID
 * **datetime** : the datetime (year-month-day hour:minute:second) of the first camera image of each independent detection. Multiple images may be taken during a detection event, and this data has been sliced to the first image for simplicity. Note there was an error in the raw data resulting in no "seconds" being recorded from the timelapse data, therefore all detections end at the top of the hour (e.g. 6:03:00 AM). This should be of little consequence, but is annoying. 
 * **species** : the species in the independent detection. Note this still contains "Unknowns" and will need to be filtered/cleaned before any analysis.
 * **timediff** : the difference in time between subsequent independent detections (mins). Note this could be calculated using the datetime column between subsequent detections. NA's represent the first detection of a species at a given camera, as there can be no difference in time from this event to a previous event. 
@@ -111,46 +101,63 @@ This folder contains information from the original data production necessary for
 
 ### Data specific information for : [outputs/willmore_covariates.csv]  
 
-* **Number of variables/columns:** 38
-* **Number of observations/rows:** 2300 (115 camera sites, 20 repeat observations/one observation per radius measure)
+* **Number of variables/columns:** 46
+* **Number of observations/rows:** 5245 (115 camera sites, 20 repeat observations/one observation per radius measure)
+
+Unfortunately I cannot find clear documentation on the covariates for the kananaskis array. In many cases they seem quite straightforward. I would recommend users read the relevant literature from this array and see what was reported for these variables if used. An ambitious collaborator could do this and fill in details for each of these if they wanted! But I am leaving them blank for now. 
 
 **Variable List:**
 * **site** : camera site ID
 *  **radius** : the circular buffer (m) around which proportional cover for other covariates is measured
-*  **bpsdl** : borrowpits, sump, dugouts and lagoons: Artificial holding or treatment ponds for industrial, agricultural or municipal wastewater. Human made water and sewage lagoons used for municipal purposes.
-*  **cultivation** : Agricultural areas used for cultivation
-*  **disturbedvegetation** : Disturbed vegetation that does not fit any other category of human footprint.
-*  **harvestareas** : Areas where forestry operations have occurred (clearcut, selective harvest, salvage logging, etc.)
-*  **industrial_sites** : a summary feature of many industrial sites (see pages 75-76 of other/HFI2010_Metadata.pdf)
-*  **landfill** : Large area of raised land, indicating buried garbage. Some landfills have evidence of surface revegetation and garbage dispersed throughout designated extent. They may also have large perimeter berns or fences
-*  **mine_sites** : a summary feature of many mine sites (see pages 60-61 of other/HFI2010_Metadata.pdf)
-*  **othervegsurfacesrecreation** : a summary feature of many other vegetated surfaces (see pages 97 of other/HFI2010_Metadata.pdf)
-*   **pipelines** : A line of underground and over ground pipes, of substantial length and capacity, used for the conveyance of petrochemicals. (Technically a summary feature, but basically the same, see page 167 of other/HFI2010_Metadata.pdf)
-*   **railways**: a summary feature of many railway types, see page 48 of other/HFI2010_Metadata.pdf)
-*   **resevoirs** : a body of water created by excavation or the man made damming of a river or stream
-*   **residential_areas** : Rural developments (10 - 100 buildings per quarter section).
-*   **roads** : a summary feature of road types (see pages 38-39 of other/HFI2010_Metadata.pdf)
-*   **seismiclines** : a summary feature of different seismic lines (see page 174 of other/HFI2010_Metadata.pdf)
-*   **transmissionlines** : A utility corridor >10 m wide with poles, towers and lines for transmitting high voltage electricity (voltage greater than 69 kV). (Technically a summary class, see page 112 of other/HFI2010_Metadata.pdf)
-*   **verge** : no clear description - RECOMMEND REMOVAL OR NOT USING
-*   **wellsites** : no clear description, but given there are two feature classes for active and abandoned wellsites, this is likely a combination of the two.
-*   **wind_gen_facilities** : Wind turbines, operational or former, visible on imagery. Digitized to represent original land disturbance from construction.
-*   **dense_conifer** : dense conifer
-*   **moderate_conifer** : moderate conifer cover
-*   **open_conifer** : open conifer cover
-*   **mixed** : likely mixed tree species cover
-*   **broadleaf** : deciduous tree cover
-*   **treed_wetland** : wetlands with a high amount of trees
-*   **shrub** : shrubs
-*   **herb** : not sure, herbs? maybe oregano? (being cheeky, I can't find anything on this)
-*   **open_wetland** : open wetlands lacking trees
-*   **barren** : open landscape devoid of vegetation
-*   **water** : open water, different from wetland.
-*   **shadow_or_no_data** : error in the extraction process from shadows
-*   **snow_or_ice** : snow or ice cover
-*   **regeneration** : regenerating vegetation
-*   **cloud_or_no_data** error in the extraction process from clouds
-*   **mean_ndvi_2008** : mean ndvi value within a 1000m buffer of the camera sites from 2008
-*   **mean_ndvi_2012** : mean ndvi value within a 1000m buffer of the camera sites from 2012
-*   **mean_tri** : mean terrain ruggedness index at each camera site
+* **Road_Hard Surface** :
+* **Road_Vegetated Verge
+* **Seismic line
+* **Cut Blocks
+* **Road_Trail (Vegetated)
+* **Well Site
+* **Reservoirs
+* **Transmission Line
+* **Pipeline
+* **Rural (Residential_Industrial)
+* **Other Disturbed Vegetation
+* **Cultivation (Crop_Pasture/Bare Ground)
+* **Borrow-Pits_Dugouts/Sumps
+* **Canals
+* **Industrial Site Rural
+* **Road â€“ Hard Surface
+* **Road â€“ Vegetated Verge
+* **Rail â€“ Hard Surface
+* **Rail â€“ Vegetated Verge
+* **Mine Site
+* **Rail_Hard Surface
+* **Rail_Vegetated Verge
+* **Urban
+* **High Density Livestock Operation
+* **Municipal (Water and Sewage)
+* **dense_conifer
+* **moderate_conifer
+* **open_conifer
+* **mixed
+* **herb
+* **snow_or_ice
+* **shrub
+* **barren
+* **water
+* **broadleaf
+* **cloud_or_no_data
+* **treed_wetland
+* **agriculture
+* **open_wetland
+* **shadow_or_no_data
+* **unknown
+* **mean_ndvi_2008
+* **mean_ndvi_2012
+* **mean_tri
+* **
+* **
+* **
+* **
+* **
+* **
+
 
