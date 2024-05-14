@@ -401,7 +401,7 @@ hf<-hf%>%
   group_by(radius, site, feature)%>%
   slice(1)
 
-#Try again...getting an error and I imagine its in the column names
+#Try again...getting an error and I imagine its in the column namessss
 #hf%>%
 # pivot_wider(names_from = feature, values_from = percent_area)
 unique(hf$feature)
