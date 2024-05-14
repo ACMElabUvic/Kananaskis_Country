@@ -110,54 +110,50 @@ Unfortunately I cannot find clear documentation on the covariates for the kanana
 * **site** : camera site ID
 *  **radius** : the circular buffer (m) around which proportional cover for other covariates is measured
 * **Road_Hard Surface** :
-* **Road_Vegetated Verge
-* **Seismic line
-* **Cut Blocks
-* **Road_Trail (Vegetated)
-* **Well Site
-* **Reservoirs
-* **Transmission Line
-* **Pipeline
-* **Rural (Residential_Industrial)
-* **Other Disturbed Vegetation
-* **Cultivation (Crop_Pasture/Bare Ground)
-* **Borrow-Pits_Dugouts/Sumps
-* **Canals
-* **Industrial Site Rural
-* **Road â€“ Hard Surface
-* **Road â€“ Vegetated Verge
-* **Rail â€“ Hard Surface
-* **Rail â€“ Vegetated Verge
-* **Mine Site
-* **Rail_Hard Surface
-* **Rail_Vegetated Verge
-* **Urban
-* **High Density Livestock Operation
-* **Municipal (Water and Sewage)
-* **dense_conifer
-* **moderate_conifer
-* **open_conifer
-* **mixed
-* **herb
-* **snow_or_ice
-* **shrub
-* **barren
-* **water
-* **broadleaf
-* **cloud_or_no_data
-* **treed_wetland
-* **agriculture
-* **open_wetland
-* **shadow_or_no_data
-* **unknown
-* **mean_ndvi_2008
-* **mean_ndvi_2012
-* **mean_tri
-* **
-* **
-* **
-* **
-* **
-* **
+* **Road_Vegetated Verge** :
+* **Seismic line** :
+* **Cut Blocks** :
+* **Road_Trail (Vegetated)** :
+* **Well Site** :
+* **Reservoirs** :
+* **Transmission Line** :
+* **Pipeline** :
+* **Rural (Residential_Industrial)** :
+* **Other Disturbed Vegetation** :
+* **Cultivation (Crop_Pasture/Bare Ground)** :
+* **Borrow-Pits_Dugouts/Sumps** :
+* **Canals** :
+* **Industrial Site Rural** :
+* **Road â€“ Hard Surface** :
+* **Road â€“ Vegetated Verge** :
+* **Rail â€“ Hard Surface** :
+* **Rail â€“ Vegetated Verge** :
+* **Mine Site** :
+* **Rail_Hard Surface** :
+* **Rail_Vegetated Verge** :
+* **Urban** :
+* **High Density Livestock Operation** :
+* **Municipal (Water and Sewage)** :
+* **dense_conifer** :
+* **moderate_conifer** :
+* **open_conifer** :
+* **mixed** :
+* **herb** :
+* **snow_or_ice** :
+* **shrub** :
+* **barren** :
+* **water** :
+* **broadleaf** :
+* **cloud_or_no_data** :
+* **treed_wetland** :
+* **agriculture** :
+* **open_wetland** :
+* **shadow_or_no_data** :
+* **unknown** :
+* **mean_ndvi_2008** :
+* **mean_ndvi_2012** :
+* **mean_tri** :
+
+Fin. 
 
 
