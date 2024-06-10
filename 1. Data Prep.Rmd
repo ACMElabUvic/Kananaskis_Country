@@ -276,6 +276,8 @@ A<-camop%>%
   ggplot(A, aes(y = Site))+
   geom_segment(aes(x = start2, xend = end2, y = Site, yend = Site))
 
+  A%>%
+  filter(start_date > end_date)
 
 #Ok so now I just need to add the coordinates to this camop and export it!
 #Bit of a janky merge but here we go!
@@ -288,12 +290,16 @@ camop<-merge(cams%>%
 #Ok and one last thing to do, there are many different formats and whatnot so lets try to make sure everything is arranged and read in correctly
 camop<-camop%>%
   group_by(Site)%>%
-  arrange(start_date)%>%
+  arrange(Site, start_date)%>%
   mutate(start_date = parse_date_time(start_date, orders = c("dmy", "mdy", "ymd")))
 
-
+#and at the end of it, as best as I can tell there are some typos where the start dates are after the end dates, just remove them
+camop<-camop%>%
+  filter(end_date > start_date)
 
 write.csv(camop, file.path(output_directory, "kananaskis_camop.csv"), row.names = FALSE)
+
+
 
 
 ```
@@ -523,6 +529,7 @@ write.csv(covs, file.path(output_directory, "kananaskis_covariates.csv"),
           row.names = FALSE)
 
 ```
+
 
 
 Fin.
